@@ -1,0 +1,5 @@
+{
+  "name": "Tradutor AI de Documentos",
+  "description": "Um aplicativo avançado que utiliza a API Gemini para realizar OCR em imagens e PDFs, traduzindo o conteúdo de qualquer idioma para o português e exportando o resultado em formato compatível com Word (.doc).",
+  "requestFramePermissions": []
+}
