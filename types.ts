@@ -19,3 +19,5 @@ export interface FileData {
 }
 
 export type TargetLanguage = 'Português' | 'Inglês' | 'Espanhol';
+
+export type OCRMode = 'rápido' | 'alta-precisão';

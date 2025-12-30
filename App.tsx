@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { AppStatus, TranslationResult, FileData, TargetLanguage } from './types';
+import { AppStatus, TranslationResult, FileData, TargetLanguage, OCRMode } from './types';
 import { translateDocument } from './services/geminiService';
 import { fileToBase64, downloadAsDoc, downloadAsTxt, downloadAsPdf } from './utils/pdfUtils';
 import { Button } from './components/Button';
@@ -13,6 +13,7 @@ const App: React.FC = () => {
   const [fontSize, setFontSize] = useState<number>(14);
   const [lineHeight, setLineHeight] = useState<number>(1.6);
   const [targetLang, setTargetLang] = useState<TargetLanguage>('Português');
+  const [ocrMode, setOcrMode] = useState<OCRMode>('rápido');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,7 +37,7 @@ const App: React.FC = () => {
         name: file.name
       });
 
-      const translation = await translateDocument(base64, file.type, targetLang);
+      const translation = await translateDocument(base64, file.type, targetLang, ocrMode);
       setResult(translation);
       setStatus(AppStatus.SUCCESS);
     } catch (err) {
@@ -91,24 +92,45 @@ const App: React.FC = () => {
         <h1 className="text-4xl font-extrabold text-slate-900 mb-2 tracking-tight">Tradutor AI de Documentos</h1>
         <p className="text-slate-500 text-lg">Traduza imagens e PDFs instantaneamente com precisão de IA.</p>
         
-        {/* Language Selector */}
+        {/* Selectors Bar */}
         {status === AppStatus.IDLE && (
-          <div className="mt-8 flex items-center justify-center gap-4">
-            <span className="text-slate-600 font-medium text-sm">Traduzir para:</span>
-            <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
-              {languages.map((lang) => (
-                <button
-                  key={lang}
-                  onClick={() => setTargetLang(lang)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                    targetLang === lang 
-                      ? 'bg-blue-600 text-white shadow-md' 
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  {lang}
-                </button>
-              ))}
+          <div className="mt-8 flex flex-col md:flex-row items-center justify-center gap-6">
+            <div className="flex items-center gap-3">
+              <span className="text-slate-600 font-medium text-sm">Traduzir para:</span>
+              <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                {languages.map((lang) => (
+                  <button
+                    key={lang}
+                    onClick={() => setTargetLang(lang)}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                      targetLang === lang 
+                        ? 'bg-blue-600 text-white shadow-md' 
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    {lang}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="text-slate-600 font-medium text-sm">Qualidade OCR:</span>
+              <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                {(['rápido', 'alta-precisão'] as OCRMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setOcrMode(mode)}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all capitalize ${
+                      ocrMode === mode 
+                        ? 'bg-emerald-600 text-white shadow-md' 
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    {mode.replace('-', ' ')}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -134,8 +156,16 @@ const App: React.FC = () => {
             <h3 className="text-xl font-bold text-slate-800 mb-2">Selecione seu arquivo</h3>
             <p className="text-slate-500 mb-8">Arraste e solte ou clique para navegar (Imagens ou PDF)</p>
             <Button onClick={() => fileInputRef.current?.click()}>
-              Traduzir para {targetLang}
+              Iniciar Tradução {ocrMode === 'alta-precisão' ? 'Premium' : ''}
             </Button>
+            <div className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-400 italic">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {ocrMode === 'alta-precisão' 
+                ? "O modo Alta Precisão usa raciocínio avançado para layouts complexos." 
+                : "O modo Rápido é otimizado para documentos simples e velocidade."}
+            </div>
           </div>
         )}
 
@@ -150,7 +180,7 @@ const App: React.FC = () => {
               </div>
             </div>
             <h2 className="text-2xl font-bold text-slate-900 mb-3">Processando com Inteligência Artificial</h2>
-            <p className="text-slate-500 max-w-sm">Estamos extraindo o texto e traduzindo para o <strong>{targetLang.toLowerCase()}</strong>. Isso pode levar alguns segundos...</p>
+            <p className="text-slate-500 max-w-sm">Extraindo texto e traduzindo para o <strong>{targetLang.toLowerCase()}</strong> em modo <strong>{ocrMode.replace('-', ' ')}</strong>...</p>
           </div>
         )}
 
@@ -174,7 +204,7 @@ const App: React.FC = () => {
               <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8 border-b border-slate-100 pb-8">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900">Tradução Concluída</h2>
-                  <p className="text-slate-500">Idioma detectado: <span className="text-blue-600 font-medium">{result.detectedLanguage}</span> → Traduzido para: <span className="text-emerald-600 font-medium">{targetLang}</span></p>
+                  <p className="text-slate-500">Idioma: <span className="text-blue-600 font-medium">{result.detectedLanguage}</span> → <span className="text-emerald-600 font-medium">{targetLang}</span> ({ocrMode})</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <Button variant="outline" onClick={handleReset} className="h-11 px-4 text-sm">
@@ -211,13 +241,13 @@ const App: React.FC = () => {
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                     </svg>
-                    Ajustar Formatação
+                    Estilo de Exportação
                   </h3>
                   
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <label className="text-sm font-medium text-slate-600">Tam. da Fonte</label>
+                        <label className="text-sm font-medium text-slate-600">Fonte</label>
                         <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-md">{fontSize}px</span>
                       </div>
                       <input 
@@ -232,7 +262,7 @@ const App: React.FC = () => {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <label className="text-sm font-medium text-slate-600">Espaçamento</label>
+                        <label className="text-sm font-medium text-slate-600">Linhas</label>
                         <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-md">{lineHeight}x</span>
                       </div>
                       <input 
@@ -245,10 +275,6 @@ const App: React.FC = () => {
                         className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                       />
                     </div>
-
-                    <p className="text-[10px] text-slate-400 italic leading-tight pt-4">
-                      * O formato Texto (TXT) não mantém a formatação de fonte e espaçamento.
-                    </p>
                   </div>
                 </div>
 
@@ -258,7 +284,7 @@ const App: React.FC = () => {
                     <div className="space-y-3">
                       <h4 className="font-bold text-slate-800 uppercase text-xs tracking-widest flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                        Documento Original
+                        Original
                       </h4>
                       <div className="aspect-[3/4] rounded-2xl overflow-hidden bg-slate-50 border border-slate-200 flex items-center justify-center shadow-inner">
                         {fileData.mimeType.startsWith('image/') ? (
@@ -269,11 +295,10 @@ const App: React.FC = () => {
                           />
                         ) : (
                           <div className="text-center p-6">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-20 w-20 text-slate-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-slate-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                             </svg>
-                            <p className="text-slate-500 font-semibold truncate max-w-[200px] mx-auto">{fileData.name}</p>
-                            <p className="text-slate-400 text-xs mt-1">Documento PDF</p>
+                            <p className="text-slate-500 font-semibold truncate max-w-[180px] mx-auto text-xs">{fileData.name}</p>
                           </div>
                         )}
                       </div>
@@ -283,7 +308,7 @@ const App: React.FC = () => {
                   <div className="space-y-3">
                     <h4 className="font-bold text-blue-800 uppercase text-xs tracking-widest flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-                      Texto Traduzido ({targetLang})
+                      Traduzido
                     </h4>
                     <div 
                       className="aspect-[3/4] rounded-2xl overflow-y-auto bg-blue-50/20 border border-blue-100 p-8 whitespace-pre-wrap text-slate-800 shadow-inner scrollbar-thin scrollbar-thumb-blue-200"
@@ -299,9 +324,9 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <footer className="mt-auto pt-12 text-slate-400 text-xs text-center">
-        <p className="mb-1">© {new Date().getFullYear()} AI Document Translator</p>
-        <p>OCR e Tradução Neural Avançada • Desenvolvido com Gemini</p>
+      <footer className="mt-auto pt-12 text-slate-400 text-[10px] text-center uppercase tracking-widest">
+        <p className="mb-1">AI Document Translator • Gemini 3 Vision</p>
+        <p>OCR de precisão milimétrica • Tradução Contextual</p>
       </footer>
     </div>
   );
